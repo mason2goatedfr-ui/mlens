@@ -6,70 +6,299 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>mLens AI</title>
 <style>
-body{margin:0;background:#101116;color:#f5f5f7;font:16px system-ui;display:grid;place-items:center;min-height:100vh}
-main{width:min(560px,90vw);background:#1b1c24;padding:24px;border-radius:18px;box-sizing:border-box}
-h1{margin-top:0}p{color:#b9bac8}
-textarea{box-sizing:border-box;width:100%;height:110px;background:#101116;color:white;border:1px solid #444;padding:12px;border-radius:10px;font:inherit}
-button{width:100%;padding:12px;margin-top:10px;background:#9b7bff;color:#111;border:0;border-radius:10px;font-weight:700;cursor:pointer}
-#status,#answer{white-space:pre-wrap;overflow-wrap:anywhere;margin-top:16px}
+:root {
+  color-scheme: dark;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #101116;
+  color: #f5f5f7;
+  padding: 16px;
+  display: grid;
+  place-items: center;
+}
+main {
+  width: min(560px, 100%);
+  background: #1b1c24;
+  border: 1px solid #343541;
+  border-radius: 18px;
+  padding: 20px;
+}
+body.embed {
+  min-height: 0;
+  display: block;
+  padding: 0;
+  background: transparent;
+}
+body.embed main {
+  width: 100%;
+  min-height: 100vh;
+  border-radius: 12px;
+  padding: 14px;
+}
+h1 { font-size: 23px; margin: 0 0 5px; }
+p { color: #b9bac8; margin: 5px 0 14px; font-size: 13px; }
+textarea {
+  width: 100%;
+  min-height: 100px;
+  resize: vertical;
+  background: #101116;
+  color: white;
+  border: 1px solid #454653;
+  padding: 12px;
+  border-radius: 10px;
+  font: inherit;
+}
+button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 9px;
+  background: #a78bfa;
+  color: #15121f;
+  border: 0;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+}
+button:disabled { opacity: .6; cursor: wait; }
+#status {
+  color: #c4b5fd;
+  font-size: 13px;
+  margin-top: 13px;
+  overflow-wrap: anywhere;
+}
+#answer {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.55;
+  margin-top: 12px;
+}
+.small {
+  color: #9ca3af;
+  font-size: 11px;
+  margin-top: 12px;
+}
 </style>
 </head>
 <body>
 <main>
-<h1>✦ mLens</h1>
-<p>Local AI assistant. No API key required.</p>
-<textarea id="question" placeholder="Ask mLens something..."></textarea>
-<button id="ask">Load AI & Ask</button>
-<div id="status">Ready.</div>
-<div id="answer"></div>
+  <h1>✦ mLens</h1>
+  <p>Local browser AI · No API key</p>
+
+  <textarea id="question"
+    placeholder="Ask a question or enter a math problem..."
+    aria-label="Your question"></textarea>
+
+  <button id="ask">Ask mLens</button>
+  <div id="status" role="status">Ready.</div>
+  <div id="answer" aria-live="polite"></div>
+  <div class="small">AI responses can be wrong. Check important answers.</div>
 </main>
+
 <script type="module">
-import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2';
-
-const status = document.querySelector('#status');
-const answer = document.querySelector('#answer');
+const questionBox = document.querySelector('#question');
 const button = document.querySelector('#ask');
-let model;
+const statusBox = document.querySelector('#status');
+const answerBox = document.querySelector('#answer');
 
-button.addEventListener('click', async () => {
-  const question = document.querySelector('#question').value.trim();
-  if (!question) {
-    status.textContent = 'Type a question first.';
-    return;
+// Compact mode for the bookmarklet's embedded frame.
+if (new URLSearchParams(location.search).get('embed') === '1') {
+  document.body.classList.add('embed');
+}
+
+let modelPromise = null;
+
+// Safe arithmetic parser. Does not use eval() or execute question text.
+function calculate(expression) {
+  const tokens = expression.match(
+    /(?:\d+(?:\.\d*)?|\.\d+)|[()+*/^-]/g
+  );
+  if (!tokens || tokens.join('') !== expression.replace(/\s/g, '')) {
+    return null;
   }
 
-  button.disabled = true;
-  answer.textContent = '';
+  let pos = 0;
+
+  function primary() {
+    const t = tokens[pos++];
+
+    if (t === '+') return primary();
+    if (t === '-') return -primary();
+
+    if (t === '(') {
+      const n = addSub();
+      if (tokens[pos++] !== ')') throw Error('Missing closing parenthesis');
+      return n;
+    }
+
+    if (t === undefined || !/^(?:\d+(?:\.\d*)?|\.\d+)$/.test(t)) {
+      throw Error('Invalid number');
+    }
+
+    return Number(t);
+  }
+
+  function power() {
+    let n = primary();
+    if (tokens[pos] === '^') {
+      pos++;
+      n = n ** power();
+    }
+    return n;
+  }
+
+  function multiply() {
+    let n = power();
+    while (tokens[pos] === '*' || tokens[pos] === '/') {
+      const op = tokens[pos++];
+      const rhs = power();
+      n = op === '*' ? n * rhs : n / rhs;
+    }
+    return n;
+  }
+
+  function addSub() {
+    let n = multiply();
+    while (tokens[pos] === '+' || tokens[pos] === '-') {
+      const op = tokens[pos++];
+      const rhs = multiply();
+      n = op === '+' ? n + rhs : n - rhs;
+    }
+    return n;
+  }
 
   try {
-    if (!model) {
-      status.textContent = 'Loading AI library and downloading model. First load may take a while...';
-      model = await pipeline(
+    const result = addSub();
+    if (pos !== tokens.length || !Number.isFinite(result)) return null;
+    return result;
+  } catch {
+    return null;
+  }
+}
+
+function getMathExpression(question) {
+  let s = question.trim().toLowerCase();
+
+  s = s.replace(/^what is\s+/, '')
+       .replace(/^calculate\s+/, '')
+       .replace(/^compute\s+/, '')
+       .replace(/^evaluate\s+/, '')
+       .replace(/^solve\s+/, '')
+       .replace(/^the result of\s+/, '');
+
+  s = s.replace(/[?!.]+$/g, '')
+       .replace(/\s+show (?:the )?(?:calculation|work).*$/i, '')
+       .replace(/\s+explain.*$/i, '')
+       .trim();
+
+  s = s.replace(/[×✕]/g, '*')
+       .replace(/[÷]/g, '/')
+       .replace(/\s+x\s+/g, '*');
+
+  // Only handle a question if the remaining text is purely arithmetic.
+  if (!/^[\d\s.+*/^()\-]+$/.test(s)) return null;
+  if (!/\d/.test(s) || !/[+*/^()-]/.test(s)) return null;
+
+  return calculate(s);
+}
+
+async function getModel() {
+  if (!modelPromise) {
+    modelPromise = (async () => {
+      statusBox.textContent = 'Loading AI library...';
+
+      const { pipeline } = await import(
+        'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2'
+      );
+
+      statusBox.textContent =
+        'Preparing the AI model. The first download may take a while...';
+
+      return pipeline(
         'text-generation',
         'HuggingFaceTB/SmolLM2-135M-Instruct',
         { dtype: 'q4' }
       );
+    })().catch(error => {
+      modelPromise = null;
+      throw error;
+    });
+  }
+
+  return modelPromise;
+}
+
+async function ask() {
+  const question = questionBox.value.trim();
+  if (!question) {
+    statusBox.textContent = 'Type a question first.';
+    return;
+  }
+
+  button.disabled = true;
+  answerBox.textContent = '';
+
+  try {
+    const mathAnswer = getMathExpression(question);
+
+    if (mathAnswer !== null) {
+      answerBox.textContent =
+        Number.isInteger(mathAnswer)
+          ? mathAnswer.toLocaleString('en-US')
+          : String(Number(mathAnswer.toPrecision(12)));
+      statusBox.textContent = 'Calculated exactly by the built-in calculator.';
+      return;
     }
 
-    status.textContent = 'Thinking...';
+    const model = await getModel();
+
+    statusBox.textContent = 'Generating an answer...';
+
     const result = await model(
       [
-        { role: 'system', content: 'You are mLens, a helpful assistant. Answer clearly and accurately.' },
+        {
+          role: 'system',
+          content:
+            'You are mLens, a helpful assistant. Answer clearly and concisely. ' +
+            'Do not invent facts. For difficult arithmetic, show the steps ' +
+            'and check the result. Admit uncertainty when necessary.'
+        },
         { role: 'user', content: question }
       ],
-      { max_new_tokens: 120, do_sample: false }
+      { max_new_tokens: 160, do_sample: false }
     );
 
     const generated = result[0].generated_text;
-    answer.textContent = Array.isArray(generated)
-      ? generated[generated.length - 1]?.content ?? JSON.stringify(generated)
-      : String(generated);
-    status.textContent = 'Done.';
+    const last = Array.isArray(generated)
+      ? generated[generated.length - 1]
+      : null;
+
+    answerBox.textContent =
+      last?.role === 'assistant' && last?.content
+        ? last.content
+        : typeof generated === 'string'
+          ? generated
+          : JSON.stringify(generated);
+
+    statusBox.textContent = 'Finished. Verify important answers.';
   } catch (error) {
-    status.textContent = 'Error: ' + (error.message || String(error));
-    console.error(error);
+    console.error('mLens error:', error);
+    statusBox.textContent =
+      'Error: ' + (error?.message || String(error));
   } finally {
     button.disabled = false;
+  }
+}
+
+button.addEventListener('click', ask);
+
+questionBox.addEventListener('keydown', event => {
+  if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+    ask();
   }
 });
 </script>
