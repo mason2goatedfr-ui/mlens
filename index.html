@@ -168,7 +168,7 @@ async function loadModel() {
     showProgress(NaN);
 
     const { pipeline, TextStreamer, env } = await import(
-      "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/+esm"
+      "https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1"
     );
 
     // Transformers.js uses browser caching for downloaded model files.
@@ -179,7 +179,7 @@ async function loadModel() {
 
     const generator = await pipeline(
       "text-generation",
-      "huggingworld/SmolLM2-1.7B-Instruct",
+      "HuggingFaceTB/SmolLM2-1.7B-Instruct",
       {
         device: "webgpu",
         dtype: "q4f16",
