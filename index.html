@@ -2,367 +2,497 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>mLens</title>
-
-  <style>
-    :root {
-      color-scheme: dark;
-      font-family: system-ui, sans-serif;
-      background: #101014;
-      color: #f5f5f7;
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      padding: 18px;
-      background: radial-gradient(ellipse at top, #29223d, #101014 65%);
-      min-height: 100vh;
-    }
-
-    body.embed {
-      padding: 12px;
-      background: #101014;
-    }
-
-    main {
-      max-width: 760px;
-      margin: auto;
-    }
-
-    h1 {
-      margin: 0 0 4px;
-      font-size: 28px;
-    }
-
-    .subtitle, .footer {
-      color: #aaa7b7;
-      font-size: 12px;
-    }
-
-    .panel {
-      margin-top: 20px;
-      padding: 16px;
-      border: 1px solid #373441;
-      border-radius: 15px;
-      background: #191920;
-    }
-
-    label {
-      display: block;
-      font-weight: 700;
-      margin-bottom: 9px;
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 145px;
-      padding: 12px;
-      resize: vertical;
-      border: 1px solid #44414e;
-      border-radius: 10px;
-      background: #101015;
-      color: white;
-      font: inherit;
-      line-height: 1.5;
-    }
-
-    textarea:focus {
-      outline: 2px solid #a78bfa;
-      outline-offset: 1px;
-    }
-
-    button {
-      padding: 12px;
-      border: 0;
-      border-radius: 10px;
-      font: inherit;
-      font-weight: 750;
-      cursor: pointer;
-    }
-
-    #ask {
-      width: 100%;
-      margin-top: 10px;
-      background: #b39aff;
-      color: #171222;
-    }
-
-    #ask:disabled {
-      opacity: .6;
-      cursor: wait;
-    }
-
-    #status {
-      min-height: 20px;
-      margin: 14px 0 8px;
-      color: #c7b9ff;
-      font-size: 13px;
-      overflow-wrap: anywhere;
-    }
-
-    #answer {
-      min-height: 85px;
-      padding: 13px;
-      border: 1px solid #373441;
-      border-radius: 10px;
-      background: #101015;
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-      line-height: 1.6;
-    }
-
-    .actions {
-      display: flex;
-      gap: 8px;
-      margin-top: 9px;
-    }
-
-    .actions button {
-      flex: 1;
-      background: #302b3d;
-      color: white;
-    }
-
-    .footer {
-      margin-top: 12px;
-      line-height: 1.5;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mLens</title>
+<style>
+:root {
+  color-scheme: dark;
+  font-family: system-ui, sans-serif;
+  background: #101014;
+  color: #f5f5f7;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 18px;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at top, #29223d, #101014 65%);
+}
+body.embed { padding: 12px; background: #101014; }
+main { max-width: 760px; margin: auto; }
+h1 { margin: 0 0 4px; font-size: 28px; }
+.subtitle, .footer { color: #aaa7b7; font-size: 12px; }
+.panel {
+  margin-top: 20px;
+  padding: 16px;
+  border: 1px solid #373441;
+  border-radius: 15px;
+  background: #191920;
+}
+label { display: block; font-weight: 700; margin-bottom: 9px; }
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 145px;
+  padding: 12px;
+  resize: vertical;
+  border: 1px solid #44414e;
+  border-radius: 10px;
+  background: #101015;
+  color: white;
+  font: inherit;
+  line-height: 1.5;
+}
+textarea:focus { outline: 2px solid #a78bfa; }
+button {
+  padding: 12px;
+  border: 0;
+  border-radius: 10px;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+button:disabled { opacity: .55; cursor: wait; }
+#ask {
+  width: 100%;
+  margin-top: 10px;
+  background: #b39aff;
+  color: #171222;
+}
+.actions { display: flex; gap: 8px; margin-top: 9px; }
+.actions button { flex: 1; background: #302b3d; color: white; }
+#status {
+  min-height: 20px;
+  margin: 14px 0 8px;
+  color: #c7b9ff;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+progress {
+  width: 100%;
+  height: 8px;
+  accent-color: #b39aff;
+  margin: 0 0 12px;
+}
+#answer {
+  min-height: 85px;
+  padding: 13px;
+  border: 1px solid #373441;
+  border-radius: 10px;
+  background: #101015;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  line-height: 1.6;
+}
+.footer { margin-top: 12px; line-height: 1.5; }
+</style>
 </head>
-
 <body>
-  <main>
-    <header>
-      <h1>✦ mLens</h1>
-      <div class="subtitle">Browser AI · No API key</div>
-    </header>
+<main>
+  <header>
+    <h1>✦ mLens</h1>
+    <div class="subtitle">Browser AI · No API key</div>
+  </header>
 
-    <section class="panel">
-      <label for="question">Ask mLens</label>
+  <section class="panel">
+    <label for="question">Ask mLens</label>
+    <textarea id="question"
+      placeholder="Paste a passage and question, or enter a math problem..."></textarea>
 
-      <textarea
-        id="question"
-        placeholder="Paste your passage and question here..."
-      ></textarea>
+    <button id="ask">Ask mLens</button>
 
-      <button id="ask">Ask mLens</button>
+    <div id="status" role="status" aria-live="polite">
+      Ready. The larger model loads on your first question.
+    </div>
 
-      <div id="status" role="status" aria-live="polite">
-        Ready. The model loads on your first question.
-      </div>
+    <progress id="progress" max="100" value="0" hidden></progress>
 
-      <div id="answer" aria-live="polite">
-        Your answer will appear here.
-      </div>
+    <div id="answer" aria-live="polite">Your answer will appear here.</div>
 
-      <div class="actions">
-        <button id="clear" type="button">New question</button>
-        <button id="copy" type="button">Copy answer</button>
-      </div>
+    <div class="actions">
+      <button id="clear" type="button">New question</button>
+      <button id="copy" type="button">Copy answer</button>
+    </div>
 
-      <div class="footer">
-        The model stays loaded while this page remains open.
-        Model files can be cached in your browser. Answers may be incorrect.
-      </div>
-    </section>
-  </main>
+    <div class="footer">
+      The model runs in your browser. The first download is large.
+      Keep this page open to reuse the loaded model.
+      AI answers can be wrong.
+    </div>
+  </section>
+</main>
 
-  <script type="module">
-    const questionBox = document.querySelector("#question");
-    const askButton = document.querySelector("#ask");
-    const clearButton = document.querySelector("#clear");
-    const copyButton = document.querySelector("#copy");
-    const statusBox = document.querySelector("#status");
-    const answerBox = document.querySelector("#answer");
+<script type="module">
+const $ = (id) => document.getElementById(id);
 
-    if (new URLSearchParams(location.search).has("embed")) {
-      document.body.classList.add("embed");
-    }
+const questionBox = $("question");
+const askButton = $("ask");
+const clearButton = $("clear");
+const copyButton = $("copy");
+const statusBox = $("status");
+const progressBar = $("progress");
+const answerBox = $("answer");
 
-    // Shared for every question in this page session.
-    // Do not create a new pipeline inside ask().
-    let modelPromise = null;
-    let busy = false;
+if (new URLSearchParams(location.search).has("embed")) {
+  document.body.classList.add("embed");
+}
 
-    function setStatus(message) {
-      statusBox.textContent = message;
-    }
+// One shared model promise. Never create a new model for each question.
+let modelPromise = null;
+let busy = false;
 
-    async function getModel() {
-      if (modelPromise) {
-        return modelPromise;
-      }
+function setStatus(message) {
+  statusBox.textContent = message;
+}
 
-      modelPromise = (async () => {
-        setStatus("Loading AI engine...");
+function showProgress(value) {
+  progressBar.hidden = false;
+  progressBar.removeAttribute("value");
 
-        const { env, pipeline } = await import(
-          "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2"
-        );
+  if (Number.isFinite(value)) {
+    progressBar.value = Math.max(0, Math.min(100, value));
+  }
+}
 
-        // Cache downloaded model files in the browser when supported.
-        env.useBrowserCache = true;
+function hideProgress() {
+  progressBar.hidden = true;
+  progressBar.value = 0;
+}
 
-        setStatus("Loading the AI model for the first time...");
+async function loadModel() {
+  if (modelPromise) return modelPromise;
 
-        return await pipeline(
-          "text-generation",
-          "HuggingFaceTB/SmolLM2-135M-Instruct",
-          {
-            dtype: "q4",
-            progress_callback: (progress) => {
-              if (progress.status === "progress") {
-                const percent = Math.round(progress.progress || 0);
-                setStatus(`Preparing model files: ${percent}%`);
-              }
+  modelPromise = (async () => {
+    setStatus("Loading AI engine...");
+    showProgress(NaN);
+
+    const { pipeline, TextStreamer, env } = await import(
+      "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1/+esm"
+    );
+
+    // Transformers.js uses browser caching for downloaded model files.
+    env.useBrowserCache = true;
+    env.allowLocalModels = false;
+
+    setStatus("Preparing SmolLM2-1.7B-Instruct. First load may take a while...");
+
+    const generator = await pipeline(
+      "text-generation",
+      "huggingworld/SmolLM2-1.7B-Instruct",
+      {
+        device: "webgpu",
+        dtype: "q4f16",
+        progress_callback: (event) => {
+          if (event.status === "progress") {
+            const pct = Number(event.progress);
+
+            if (Number.isFinite(pct)) {
+              showProgress(pct);
+              setStatus(
+                `Downloading ${event.file || "model files"}: ${Math.round(pct)}%`
+              );
+            } else {
+              showProgress(NaN);
+              setStatus(`Downloading ${event.file || "model files"}...`);
             }
+          } else if (event.status === "initiate") {
+            showProgress(NaN);
+            setStatus(`Starting download: ${event.file || "model file"}...`);
+          } else if (event.status === "done") {
+            setStatus(`Downloaded ${event.file || "a model file"}. Preparing model...`);
           }
-        );
-      })().catch((error) => {
-        // Allow a retry if loading fails.
-        modelPromise = null;
-        throw error;
-      });
-
-      return modelPromise;
-    }
-
-    function extractAnswer(generated, question) {
-      let answer = "";
-
-      if (Array.isArray(generated)) {
-        const lastAssistant = [...generated]
-          .reverse()
-          .find((message) =>
-            message?.role === "assistant" &&
-            typeof message.content === "string"
-          );
-
-        answer = lastAssistant?.content || "";
-      } else if (typeof generated === "string") {
-        answer = generated.trim();
-
-        const index = answer.lastIndexOf(question);
-
-        if (index !== -1) {
-          answer = answer.slice(index + question.length).trim();
         }
       }
+    );
 
-      return answer
-        .replace(/<\|[^|]+\|>/g, "")
-        .trim();
+    hideProgress();
+    setStatus("Model ready. Ask your next question.");
+    return { generator, TextStreamer };
+  })().catch((error) => {
+    // A failed load must not leave the app permanently stuck.
+    modelPromise = null;
+    hideProgress();
+    throw error;
+  });
+
+  return modelPromise;
+}
+
+// Safe arithmetic parser. No eval() or Function() execution.
+function evaluateMath(source) {
+  const tokens = source.match(/\d+(?:\.\d+)?|[()+\-*/^]/g);
+
+  if (!tokens || tokens.join("") !== source.replace(/\s/g, "")) {
+    throw new Error("Unsupported arithmetic expression.");
+  }
+
+  let pos = 0;
+
+  function expression() {
+    let value = term();
+
+    while (tokens[pos] === "+" || tokens[pos] === "-") {
+      const op = tokens[pos++];
+      const rhs = term();
+      value = op === "+" ? value + rhs : value - rhs;
     }
 
-    async function ask() {
-      if (busy) return;
+    return value;
+  }
 
-      const question = questionBox.value.trim();
+  function term() {
+    let value = power();
 
-      if (!question) {
-        setStatus("Enter a passage or question first.");
-        questionBox.focus();
-        return;
-      }
-
-      busy = true;
-      askButton.disabled = true;
-      askButton.textContent = "Working...";
-      answerBox.textContent = "";
-
-      try {
-        const model = await getModel();
-
-        setStatus("Thinking...");
-
-        const messages = [
-          {
-            role: "system",
-            content:
-              "You are mLens, a reading comprehension assistant. " +
-              "Answer the actual question using the supplied passage. " +
-              "Use only details supported by the passage. " +
-              "Do not invent events, dates, or motives. " +
-              "Answer directly in one or two clear sentences. " +
-              "If the passage does not contain the answer, say so."
-          },
-          {
-            role: "user",
-            content: question
-          }
-        ];
-
-        const result = await model(messages, {
-          max_new_tokens: 100,
-          do_sample: false
-        });
-
-        const generated = result?.[0]?.generated_text;
-        const answer = extractAnswer(generated, question);
-
-        if (answer) {
-          answerBox.textContent = answer;
-          setStatus("Finished. Ready for another question.");
-        } else {
-          answerBox.textContent =
-            "No readable answer was generated. Try rephrasing the question.";
-          setStatus("No answer returned.");
-        }
-      } catch (error) {
-        console.error("mLens error:", error);
-
-        answerBox.textContent =
-          "Something went wrong. Check your connection and try again.";
-
-        setStatus("Error: " + (error.message || "Unknown error"));
-      } finally {
-        busy = false;
-        askButton.disabled = false;
-        askButton.textContent = "Ask mLens";
-      }
+    while (tokens[pos] === "*" || tokens[pos] === "/") {
+      const op = tokens[pos++];
+      const rhs = power();
+      value = op === "*" ? value * rhs : value / rhs;
     }
 
-    askButton.addEventListener("click", ask);
+    return value;
+  }
 
-    questionBox.addEventListener("keydown", (event) => {
-      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
-        ask();
+  function power() {
+    let value = factor();
+
+    if (tokens[pos] === "^") {
+      pos++;
+      value = value ** power();
+    }
+
+    return value;
+  }
+
+  function factor() {
+    if (tokens[pos] === "+") {
+      pos++;
+      return factor();
+    }
+
+    if (tokens[pos] === "-") {
+      pos++;
+      return -factor();
+    }
+
+    if (tokens[pos] === "(") {
+      pos++;
+      const value = expression();
+
+      if (tokens[pos++] !== ")") {
+        throw new Error("Missing closing parenthesis.");
+      }
+
+      return value;
+    }
+
+    const token = tokens[pos++];
+
+    if (!token || !/^\d+(?:\.\d+)?$/.test(token)) {
+      throw new Error("Expected a number.");
+    }
+
+    return Number(token);
+  }
+
+  const result = expression();
+
+  if (pos !== tokens.length || !Number.isFinite(result)) {
+    throw new Error("Invalid calculation.");
+  }
+
+  return Number.isInteger(result)
+    ? String(result)
+    : String(Number(result.toPrecision(12)));
+}
+
+function findMath(text) {
+  let s = text.trim().replace(/,/g, "");
+
+  // Only recognize direct arithmetic or clearly phrased calculations.
+  const hasWords = /[a-z]/i.test(s);
+
+  if (/\b\d+(?:\.\d+)?%\s+of\s+\d+(?:\.\d+)?\b/i.test(s)) {
+    const m = s.match(/(\d+(?:\.\d+)?)%\s+of\s+(\d+(?:\.\d+)?)/i);
+    return `${m[1]}/100*${m[2]}`;
+  }
+
+  if (hasWords) {
+    if (!/^\s*(what is|calculate|compute)\b/i.test(s)) {
+      return null;
+    }
+
+    s = s.replace(/^\s*(what is|calculate|compute)\b/i, "");
+    s = s.replace(/[?=]\s*$/, "").trim();
+    s = s.replace(/\bplus\b/gi, "+")
+         .replace(/\bminus\b/gi, "-")
+         .replace(/\btimes\b/gi, "*")
+         .replace(/\bmultiplied by\b/gi, "*")
+         .replace(/\bdivided by\b/gi, "/")
+         .replace(/[×✕]/g, "*")
+         .replace(/[÷]/g, "/")
+         .replace(/(\d)\s*x\s*(?=\d)/gi, "$1 * ");
+  } else {
+    s = s.replace(/[×✕]/g, "*")
+         .replace(/[÷]/g, "/")
+         .replace(/(\d)\s*x\s*(?=\d)/gi, "$1 * ");
+  }
+
+  if (!/^[\d\s().+\-*/^]+$/.test(s)) return null;
+
+  return s.trim();
+}
+
+function getAnswer(result) {
+  const generated = result?.[0]?.generated_text;
+
+  if (Array.isArray(generated)) {
+    const lastAssistant = [...generated].reverse().find(
+      (m) => m?.role === "assistant" && typeof m.content === "string"
+    );
+
+    return lastAssistant?.content?.trim() || "";
+  }
+
+  if (typeof generated === "string") return generated.trim();
+
+  return "";
+}
+
+async function ask() {
+  if (busy) return;
+
+  const question = questionBox.value.trim();
+
+  if (!question) {
+    setStatus("Enter a question first.");
+    questionBox.focus();
+    return;
+  }
+
+  // Handle arithmetic without loading or using the AI.
+  const math = findMath(question);
+
+  if (math !== null) {
+    try {
+      answerBox.textContent = evaluateMath(math);
+      setStatus("Calculated locally. No AI needed.");
+      hideProgress();
+      return;
+    } catch {
+      // If this wasn't valid arithmetic, let the model try.
+    }
+  }
+
+  busy = true;
+  askButton.disabled = true;
+  clearButton.disabled = true;
+  copyButton.disabled = true;
+  askButton.textContent = "Working...";
+  answerBox.textContent = "";
+  hideProgress();
+
+  try {
+    const { generator, TextStreamer } = await loadModel();
+
+    setStatus("Generating answer...");
+    answerBox.textContent = "";
+
+    let streamedText = "";
+
+    const streamer = new TextStreamer(generator.tokenizer, {
+      skip_prompt: true,
+      callback_function: (chunk) => {
+        streamedText += chunk;
+        answerBox.textContent = streamedText;
+        setStatus("Generating answer...");
       }
     });
 
-    clearButton.addEventListener("click", () => {
-      if (busy) return;
+    const messages = [
+      {
+        role: "system",
+        content:
+          "You are mLens, a careful reading-comprehension assistant. " +
+          "Answer the actual question directly using the provided passage. " +
+          "Use only facts supported by the passage. Never invent details. " +
+          "For why questions, explain the reason. For questions asking for " +
+          "evidence, identify the relevant details. If information is missing, " +
+          "say so. Keep answers concise and do not repeat the entire passage."
+      },
+      { role: "user", content: question }
+    ];
 
-      questionBox.value = "";
-      answerBox.textContent = "Your next answer will appear here.";
-      setStatus(
-        modelPromise
-          ? "Model is ready. Ask your next question."
-          : "Ready. The model loads on your first question."
-      );
-
-      questionBox.focus();
+    const result = await generator(messages, {
+      max_new_tokens: 120,
+      do_sample: false,
+      repetition_penalty: 1.08,
+      streamer
     });
 
-    copyButton.addEventListener("click", async () => {
-      const answer = answerBox.textContent.trim();
+    const finalAnswer = getAnswer(result);
 
-      if (!answer || answer === "Your answer will appear here.") {
-        setStatus("There is no answer to copy yet.");
-        return;
-      }
+    // Prefer the final result, but retain streamed text if necessary.
+    const cleaned = (finalAnswer || streamedText)
+      .replace(/<\|[^|]+\|>/g, "")
+      .trim();
 
-      try {
-        await navigator.clipboard.writeText(answer);
-        setStatus("Answer copied.");
-      } catch {
-        setStatus("Copy was blocked by the browser.");
-      }
-    });
-  </script>
+    answerBox.textContent = cleaned || "No answer was generated. Try rephrasing.";
+    setStatus("Finished. Ready for another question.");
+  } catch (error) {
+    console.error("mLens error:", error);
+
+    answerBox.textContent =
+      "mLens couldn't finish. Check your connection and try again.";
+
+    setStatus("Error: " + (error?.message || "Unknown error"));
+  } finally {
+    busy = false;
+    askButton.disabled = false;
+    clearButton.disabled = false;
+    copyButton.disabled = false;
+    askButton.textContent = "Ask mLens";
+    hideProgress();
+  }
+}
+
+askButton.addEventListener("click", ask);
+
+questionBox.addEventListener("keydown", (event) => {
+  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+    ask();
+  }
+});
+
+clearButton.addEventListener("click", () => {
+  if (busy) return;
+
+  questionBox.value = "";
+  answerBox.textContent = "Your next answer will appear here.";
+  setStatus(
+    modelPromise
+      ? "Model ready. Enter another question."
+      : "Ready. The model loads on your first question."
+  );
+
+  questionBox.focus();
+});
+
+copyButton.addEventListener("click", async () => {
+  const answer = answerBox.textContent.trim();
+
+  if (!answer || answer === "Your answer will appear here.") {
+    setStatus("There is no answer to copy yet.");
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(answer);
+    setStatus("Answer copied.");
+  } catch {
+    setStatus("Clipboard access was blocked by the browser.");
+  }
+});
+</script>
 </body>
 </html>
