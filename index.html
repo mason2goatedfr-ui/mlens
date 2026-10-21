@@ -272,17 +272,40 @@ async function ask() {
       { max_new_tokens: 160, do_sample: false }
     );
 
-    const generated = result[0].generated_text;
-    const last = Array.isArray(generated)
-      ? generated[generated.length - 1]
-      : null;
+  const generated = result[0].generated_text;
+let answer = '';
 
-    answerBox.textContent =
-      last?.role === 'assistant' && last?.content
-        ? last.content
-        : typeof generated === 'string'
-          ? generated
-          : JSON.stringify(generated);
+if (Array.isArray(generated)) {
+  const assistantMessage = [...generated]
+    .reverse()
+    .find(message => message?.role === 'assistant');
+
+  answer = assistantMessage?.content || '';
+} else if (typeof generated === 'string') {
+  answer = generated.trim();
+
+  // Remove the prompt if the model included it in its output.
+  const markers = [
+    'assistant',
+    '<|assistant|>',
+    'Answer:',
+    'Here is the answer:'
+  ];
+
+  const questionIndex = answer.lastIndexOf(question);
+
+  if (questionIndex !== -1) {
+    answer = answer.slice(questionIndex + question.length).trim();
+  }
+
+  answer = answer
+    .replace(/^<\|assistant\|>/, '')
+    .replace(/<\|[^|]+\|>/g, '')
+    .trim();
+}
+
+answerBox.textContent =
+  answer || 'No answer was generated. Try asking the question again.';
 
     statusBox.textContent = 'Finished. Verify important answers.';
   } catch (error) {
