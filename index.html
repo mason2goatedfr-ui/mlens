@@ -9,7 +9,7 @@
   <style>
     :root {
       color-scheme: dark;
-      font-family: system-ui, -apple-system, sans-serif;
+      font-family: system-ui, sans-serif;
       background: #101014;
       color: #f5f5f7;
     }
@@ -18,84 +18,86 @@
 
     body {
       margin: 0;
-      padding: 22px;
+      padding: 18px;
+      background: radial-gradient(ellipse at top, #29223d, #101014 65%);
       min-height: 100vh;
-      background:
-        radial-gradient(ellipse at top, #252039 0%, #101014 55%);
+    }
+
+    body.embed {
+      padding: 12px;
+      background: #101014;
     }
 
     main {
       max-width: 760px;
-      margin: 0 auto;
+      margin: auto;
     }
-
-    header { margin-bottom: 22px; }
 
     h1 {
-      margin: 0 0 5px;
-      font-size: 30px;
-      letter-spacing: 1px;
+      margin: 0 0 4px;
+      font-size: 28px;
     }
 
-    .subtitle, .hint {
+    .subtitle, .footer {
       color: #aaa7b7;
-      font-size: 13px;
+      font-size: 12px;
     }
 
     .panel {
+      margin-top: 20px;
+      padding: 16px;
+      border: 1px solid #373441;
+      border-radius: 15px;
       background: #191920;
-      border: 1px solid #35333e;
-      border-radius: 16px;
-      padding: 18px;
-      box-shadow: 0 12px 35px #0004;
     }
 
     label {
       display: block;
+      font-weight: 700;
       margin-bottom: 9px;
-      font-weight: 650;
     }
 
     textarea {
-      display: block;
       width: 100%;
-      min-height: 140px;
+      min-height: 145px;
+      padding: 12px;
       resize: vertical;
-      padding: 13px;
-      border: 1px solid #41404c;
+      border: 1px solid #44414e;
       border-radius: 10px;
-      outline: none;
       background: #101015;
-      color: #fff;
+      color: white;
       font: inherit;
       line-height: 1.5;
     }
 
     textarea:focus {
-      border-color: #b39aff;
-      box-shadow: 0 0 0 2px #a78bfa22;
+      outline: 2px solid #a78bfa;
+      outline-offset: 1px;
     }
 
     button {
-      width: 100%;
-      margin-top: 12px;
-      padding: 12px 16px;
+      padding: 12px;
       border: 0;
       border-radius: 10px;
-      background: #b39aff;
-      color: #171222;
       font: inherit;
       font-weight: 750;
       cursor: pointer;
     }
 
-    button:disabled {
-      opacity: .55;
+    #ask {
+      width: 100%;
+      margin-top: 10px;
+      background: #b39aff;
+      color: #171222;
+    }
+
+    #ask:disabled {
+      opacity: .6;
       cursor: wait;
     }
 
     #status {
-      min-height: 22px;
+      min-height: 20px;
       margin: 14px 0 8px;
       color: #c7b9ff;
       font-size: 13px;
@@ -103,9 +105,9 @@
     }
 
     #answer {
-      min-height: 90px;
-      padding: 15px;
-      border: 1px solid #35333e;
+      min-height: 85px;
+      padding: 13px;
+      border: 1px solid #373441;
       border-radius: 10px;
       background: #101015;
       white-space: pre-wrap;
@@ -113,18 +115,21 @@
       line-height: 1.6;
     }
 
-    .footer {
-      margin-top: 12px;
-      color: #92909e;
-      font-size: 12px;
-      line-height: 1.5;
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 9px;
     }
 
-    .hidden { display: none; }
+    .actions button {
+      flex: 1;
+      background: #302b3d;
+      color: white;
+    }
 
-    body.embed {
-      padding: 14px;
-      background: #101014;
+    .footer {
+      margin-top: 12px;
+      line-height: 1.5;
     }
   </style>
 </head>
@@ -133,7 +138,7 @@
   <main>
     <header>
       <h1>✦ mLens</h1>
-      <div class="subtitle">Local browser AI · No API key</div>
+      <div class="subtitle">Browser AI · No API key</div>
     </header>
 
     <section class="panel">
@@ -141,20 +146,27 @@
 
       <textarea
         id="question"
-        placeholder="Paste a passage, ask a question, or enter a math problem..."
+        placeholder="Paste your passage and question here..."
       ></textarea>
 
-      <button id="ask" type="button">Ask mLens</button>
+      <button id="ask">Ask mLens</button>
 
       <div id="status" role="status" aria-live="polite">
-        Ready. The AI model loads when you first ask a question.
+        Ready. The model loads on your first question.
       </div>
 
-      <div id="answer" aria-live="polite">Your answer will appear here.</div>
+      <div id="answer" aria-live="polite">
+        Your answer will appear here.
+      </div>
+
+      <div class="actions">
+        <button id="clear" type="button">New question</button>
+        <button id="copy" type="button">Copy answer</button>
+      </div>
 
       <div class="footer">
-        AI responses can be wrong. Check important answers.
-        The first model download may take a while.
+        The model stays loaded while this page remains open.
+        Model files can be cached in your browser. Answers may be incorrect.
       </div>
     </section>
   </main>
@@ -162,6 +174,8 @@
   <script type="module">
     const questionBox = document.querySelector("#question");
     const askButton = document.querySelector("#ask");
+    const clearButton = document.querySelector("#clear");
+    const copyButton = document.querySelector("#copy");
     const statusBox = document.querySelector("#status");
     const answerBox = document.querySelector("#answer");
 
@@ -169,109 +183,58 @@
       document.body.classList.add("embed");
     }
 
-    let generatorPromise = null;
+    // Shared for every question in this page session.
+    // Do not create a new pipeline inside ask().
+    let modelPromise = null;
+    let busy = false;
 
     function setStatus(message) {
       statusBox.textContent = message;
     }
 
-    function getMathExpression(text) {
-      const normalized = text
-        .replace(/,/g, "")
-        .replace(/[×✕]/g, "*")
-        .replace(/[÷]/g, "/")
-        .replace(/\bplus\b/gi, "+")
-        .replace(/\bminus\b/gi, "-")
-        .replace(/\btimes\b/gi, "*")
-        .replace(/\bdivided by\b/gi, "/")
-        .replace(/\bmultiplied by\b/gi, "*")
-        .replace(/\bto the power of\b/gi, "**");
-
-      const asksForMath =
-        /\b(calculate|compute|evaluate|solve|what is|how much is)\b/i.test(text);
-
-      const hasOperator = /[+\-*/^]/.test(normalized);
-
-      if (!hasOperator || (!asksForMath && !/^\s*[\d().+\-*/\s^]+\s*$/.test(normalized))) {
-        return null;
-      }
-
-      const match = normalized.match(
-        /[\d.()]+\s*(?:\*\*|[+\-*/^])\s*[\d.()]+(?:\s*(?:\*\*|[+\-*/^])\s*[\d.()]+)*/ 
-      );
-
-      if (!match) return null;
-
-      const expression = match[0].trim();
-
-      if (!/^[\d\s().+\-*/^]+$/.test(expression)) return null;
-
-      return expression;
-    }
-
-    function calculate(expression) {
-      const safeExpression = expression.replace(/\^/g, "**");
-
-      if (!/^[\d\s().+\-*/]+$/.test(safeExpression)) {
-        throw new Error("Unsupported math expression.");
-      }
-
-      // Only evaluate expressions containing numbers and arithmetic operators.
-      const result = Function(
-        '"use strict"; return (' + safeExpression + ')'
-      )();
-
-      if (typeof result !== "number" || !Number.isFinite(result)) {
-        throw new Error("That calculation has no finite result.");
-      }
-
-      return Number.isInteger(result)
-        ? String(result)
-        : String(Number(result.toPrecision(12)));
-    }
-
     async function getModel() {
-      if (!generatorPromise) {
-        generatorPromise = (async () => {
-          setStatus("Downloading AI engine...");
+      if (modelPromise) {
+        return modelPromise;
+      }
 
-          const { pipeline } = await import(
-            "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2"
-          );
+      modelPromise = (async () => {
+        setStatus("Loading AI engine...");
 
-          setStatus("Loading SmolLM2 AI model...");
+        const { env, pipeline } = await import(
+          "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.7.2"
+        );
 
-          return await pipeline(
-            "text-generation",
-            "HuggingFaceTB/SmolLM2-135M-Instruct",
-            {
-              dtype: "q4",
-              progress_callback: (progress) => {
-                if (progress.status === "progress") {
-                  const percent = Math.round(progress.progress || 0);
-                  setStatus(
-                    `Downloading model files: ${percent}%`
-                  );
-                } else if (progress.status === "done") {
-                  setStatus("Model file ready.");
-                }
+        // Cache downloaded model files in the browser when supported.
+        env.useBrowserCache = true;
+
+        setStatus("Loading the AI model for the first time...");
+
+        return await pipeline(
+          "text-generation",
+          "HuggingFaceTB/SmolLM2-135M-Instruct",
+          {
+            dtype: "q4",
+            progress_callback: (progress) => {
+              if (progress.status === "progress") {
+                const percent = Math.round(progress.progress || 0);
+                setStatus(`Preparing model files: ${percent}%`);
               }
             }
-          );
-        })().catch((error) => {
-          generatorPromise = null;
-          throw error;
-        });
-      }
+          }
+        );
+      })().catch((error) => {
+        // Allow a retry if loading fails.
+        modelPromise = null;
+        throw error;
+      });
 
-      return generatorPromise;
+      return modelPromise;
     }
 
-    function extractAnswer(generated, originalQuestion) {
+    function extractAnswer(generated, question) {
       let answer = "";
 
       if (Array.isArray(generated)) {
-        // Chat pipelines can return the entire conversation.
         const lastAssistant = [...generated]
           .reverse()
           .find((message) =>
@@ -281,53 +244,37 @@
 
         answer = lastAssistant?.content || "";
       } else if (typeof generated === "string") {
-        answer = generated;
+        answer = generated.trim();
 
-        // Remove an echoed question when the pipeline returns the prompt too.
-        const questionIndex = answer.lastIndexOf(originalQuestion);
+        const index = answer.lastIndexOf(question);
 
-        if (questionIndex !== -1) {
-          answer = answer.slice(
-            questionIndex + originalQuestion.length
-          );
+        if (index !== -1) {
+          answer = answer.slice(index + question.length).trim();
         }
       }
 
       return answer
-        .replace(/<\|im_end\|>/g, "")
-        .replace(/<\|endoftext\|>/g, "")
-        .replace(/<\|assistant\|>/g, "")
         .replace(/<\|[^|]+\|>/g, "")
         .trim();
     }
 
     async function ask() {
+      if (busy) return;
+
       const question = questionBox.value.trim();
 
       if (!question) {
-        setStatus("Enter a question first.");
+        setStatus("Enter a passage or question first.");
         questionBox.focus();
         return;
       }
 
+      busy = true;
       askButton.disabled = true;
+      askButton.textContent = "Working...";
       answerBox.textContent = "";
-      
+
       try {
-        const expression = getMathExpression(question);
-
-        if (expression) {
-          try {
-            answerBox.textContent = calculate(expression);
-            setStatus("Calculated locally.");
-            return;
-          } catch {
-            // If parsing fails, let the AI try to explain the problem.
-          }
-        }
-
-        setStatus("Preparing your question...");
-
         const model = await getModel();
 
         setStatus("Thinking...");
@@ -336,13 +283,12 @@
           {
             role: "system",
             content:
-              "You are mLens, a helpful and accurate study assistant. " +
-              "Answer the user's actual question directly. " +
-              "If the user provides a passage, use evidence from that passage. " +
-              "Do not merely repeat or summarize the passage when asked a question. " +
-              "If asked why something happened, explain the reason. " +
-              "If information is missing, say so instead of inventing facts. " +
-              "Use a short, clear answer unless the user asks for more detail."
+              "You are mLens, a reading comprehension assistant. " +
+              "Answer the actual question using the supplied passage. " +
+              "Use only details supported by the passage. " +
+              "Do not invent events, dates, or motives. " +
+              "Answer directly in one or two clear sentences. " +
+              "If the passage does not contain the answer, say so."
           },
           {
             role: "user",
@@ -351,33 +297,32 @@
         ];
 
         const result = await model(messages, {
-          max_new_tokens: 120,
-          do_sample: false,
-          return_full_text: false
+          max_new_tokens: 100,
+          do_sample: false
         });
 
         const generated = result?.[0]?.generated_text;
         const answer = extractAnswer(generated, question);
 
-        if (!answer) {
-          answerBox.textContent =
-            "The model did not return a readable answer. Try asking again.";
-          setStatus("No readable answer was generated.");
-        } else {
+        if (answer) {
           answerBox.textContent = answer;
-          setStatus("Finished. Verify important answers.");
+          setStatus("Finished. Ready for another question.");
+        } else {
+          answerBox.textContent =
+            "No readable answer was generated. Try rephrasing the question.";
+          setStatus("No answer returned.");
         }
       } catch (error) {
         console.error("mLens error:", error);
 
         answerBox.textContent =
-          "mLens couldn't complete the request. Check your connection and try again.";
+          "Something went wrong. Check your connection and try again.";
 
-        setStatus(
-          "Error: " + (error?.message || "Unknown error")
-        );
+        setStatus("Error: " + (error.message || "Unknown error"));
       } finally {
+        busy = false;
         askButton.disabled = false;
+        askButton.textContent = "Ask mLens";
       }
     }
 
@@ -386,6 +331,36 @@
     questionBox.addEventListener("keydown", (event) => {
       if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
         ask();
+      }
+    });
+
+    clearButton.addEventListener("click", () => {
+      if (busy) return;
+
+      questionBox.value = "";
+      answerBox.textContent = "Your next answer will appear here.";
+      setStatus(
+        modelPromise
+          ? "Model is ready. Ask your next question."
+          : "Ready. The model loads on your first question."
+      );
+
+      questionBox.focus();
+    });
+
+    copyButton.addEventListener("click", async () => {
+      const answer = answerBox.textContent.trim();
+
+      if (!answer || answer === "Your answer will appear here.") {
+        setStatus("There is no answer to copy yet.");
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(answer);
+        setStatus("Answer copied.");
+      } catch {
+        setStatus("Copy was blocked by the browser.");
       }
     });
   </script>
